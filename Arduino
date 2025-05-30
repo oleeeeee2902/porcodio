@@ -1,0 +1,61 @@
+#include <SoftwareSerial.h>
+
+// Bluetooth su pin 11 (TX modulo), 10 (RX modulo)
+SoftwareSerial BT(11, 10);  // TX (Arduino) → RX (modulo), RX (Arduino) ← TX (modulo)
+
+const int ledPin = 13;     // LED onboard o esterno
+const int buzzerPin = 12;  // Buzzer opzionale
+
+int modalita = 0;
+int stato = 0;
+
+void setup() {
+  Serial.begin(9600);  // Monitor seriale via USB (pin 0, 1)
+  BT.begin(9600);      // Bluetooth (SoftwareSerial su pin 10, 11)
+
+  pinMode(ledPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+
+  digitalWrite(ledPin, LOW);
+  digitalWrite(buzzerPin, LOW);
+
+  Serial.println("Sistema pronto (BT su pin 10/11, debug su USB)");
+}
+
+void loop() {
+  // Controlla se ci sono almeno 2 byte disponibili
+  if (BT.available() >= 2) {
+    modalita = BT.read();
+    stato = BT.read();
+
+    // Validazione input
+    if ((modalita < 1 || modalita > 2) || (stato < 0 || stato > 1)) {
+      Serial.println("Dati non validi ricevuti via Bluetooth");
+      flushBT();
+      return;
+    }
+
+    Serial.print("Ricevuto via BT: Modalità ");
+    Serial.print(modalita);
+    Serial.print(", Stato ");
+    Serial.println(stato);
+
+    switch (modalita) {
+      case 1: // Controllo LED
+        digitalWrite(ledPin, stato == 1 ? HIGH : LOW);
+        break;
+
+      case 2: // Controllo Buzzer
+        digitalWrite(buzzerPin, stato == 1 ? HIGH : LOW);
+        break;
+    }
+
+    // Svuota il buffer di BT in caso di byte residui
+    flushBT();
+  }
+}
+
+// Funzione per svuotare il buffer Bluetooth
+void flushBT() {
+  while (BT.available()) BT.read();
+}
